@@ -9,6 +9,7 @@ Nilusink
 """
 from .structure import *
 import typing as tp
+import time
 
 
 class Interactor:
@@ -186,8 +187,11 @@ class Interactor:
         result = self.connection.execute(query.order_by(table.columns.id.desc()))
         keys = result.keys()
 
-        if n_results is ...:
+        if n_results in (..., None):
             values = result.fetchone()
+
+        elif n_results == -1:
+            values = result.fetchall()
 
         else:
             values = result.fetchmany(n_results)
@@ -201,3 +205,59 @@ class Interactor:
             out.append(tmp)
 
         return out
+
+    def set_weather_data(
+            self,
+            station_id: int,
+            station_secret: str,
+            temperature: float | tp.Iterable[float] = ...,
+            temperature_index: float | tp.Iterable[float] = ...,
+            humidity: float | tp.Iterable[float] = ...,
+            air_pressure: float | tp.Iterable[float] = ...,
+    ) -> bool:
+        """
+        add an entry to a station
+        """
+        # get stations secret
+        table = db.Table('station_secrets', META, autoload=True, autoload_with=self.engine)
+        query = db.select([table]).where(table.columns.station_id == station_id)
+
+        result = self.connection.execute(query)
+        _secret = result.fetchone()
+
+        # no entry
+        if not _secret:
+            print("station secret entry not found")
+            return False
+
+        # check if secret matches
+        if not _secret[1] == station_secret:
+            print("secret mismatch")
+            return False
+
+        # create query
+        to_write: dict = {
+            "time": time.strftime("%Y.%m.%d-%T"),
+            "station_id": station_id,
+        }
+
+        if temperature not in (..., None):
+            to_write["temperature"] = temperature
+
+        if temperature_index not in (..., None):
+            to_write["temperature_index"] = temperature_index
+
+        if humidity not in (..., None):
+            to_write["humidity"] = humidity
+
+        if air_pressure not in (..., None):
+            to_write["air_pressure"] = air_pressure
+
+        # create query
+        table = db.Table('weather', META, autoload=True, autoload_with=self.engine)
+        query = db.insert(table).values(**to_write)
+
+        # execute query
+        self.connection.execute(query)
+
+        return True

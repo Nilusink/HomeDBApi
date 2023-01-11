@@ -33,6 +33,12 @@ STATIONS_EMP = db.Table(
     db.Column("height", db.Float, nullable=True),
 )
 
+STATION_SECRETS_EMP = db.Table(
+    'station_secrets', META,
+    db.Column("station_id", db.Integer, primary_key=True),
+    db.Column("secret", db.String, nullable=False),
+)
+
 GARDEN_HOUSE_EMP = db.Table(
     "garden_house", META,
     db.Column("id", db.Integer, primary_key=True),

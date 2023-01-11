@@ -35,6 +35,7 @@ class WeatherStationResult(BaseModel):
 # post hints
 class WeatherPush(BaseModel):
     station_id: int
+    station_secret: str
     temperature: float | None = None
     temperature_index: float | None = None
     humidity: float | None = None
@@ -99,4 +100,7 @@ def read_weather_data(
 
 @app.post("/weather/")
 def write_weather_data(item: WeatherPush):
-    return item
+    i = Interactor()
+    res = i.set_weather_data(**dict(item))
+
+    return {"success": res}
