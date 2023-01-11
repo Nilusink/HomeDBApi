@@ -188,7 +188,7 @@ class Interactor:
         keys = result.keys()
 
         if n_results in (..., None):
-            values = result.fetchone()
+            values = (result.fetchone(),)
 
         elif n_results == -1:
             values = result.fetchall()
@@ -197,6 +197,11 @@ class Interactor:
             values = result.fetchmany(n_results)
 
         out: list[dict[str, tp.Any]] = []
+
+        # in case list is empty
+        if not values or values[0] is None:
+            return out
+
         for value in values:
             tmp = {}
             for key, item in zip(keys, value):
