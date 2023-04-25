@@ -112,7 +112,7 @@ class Interactor:
                          f" height = ? "
                 params.append(height)
 
-        query += ";"
+        query += " ORDER BY id DESC;"
 
         # execute query
         results = cursor.execute(query, params)
@@ -206,6 +206,8 @@ class Interactor:
                 query += f"{'AND' if '=' in query else 'WHERE'}" \
                          f" air_pressure = ? "
                 params.append(air_pressure)
+
+        query += " ORDER BY id DESC;"
 
         # execute query
         result = cursor.execute(query, params)
