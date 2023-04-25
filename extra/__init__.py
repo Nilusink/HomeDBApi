@@ -27,7 +27,7 @@ class ConsoleColors:
 
 
 @contextmanager
-def catch_error(*args, **kwargs):
+def catch_error(*_args, **_kwargs):
     """
     catches errors and prints them, then raises them again
     """

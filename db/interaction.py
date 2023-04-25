@@ -7,21 +7,21 @@ Easy Access to the database
 Author:
 Nilusink
 """
-from .structure import *
 import typing as tp
+import sqlite3
 import time
 
 
 class Interactor:
-    __engine: db.engine.Engine = None
+    __con: sqlite3.Connection = None
     _path: str = "../data/main.db"
 
     def __new__(cls, *args, **kwargs):
         new = super().__new__(cls)
 
         # only create one instance of ENGINE for all instances
-        if cls.__engine is None:
-            cls.__engine = db.create_engine(f'sqlite:///{cls._path}', echo=False)
+        if cls.__con is None:
+            cls.__con = sqlite3.connect(cls._path)
 
         return new
 
@@ -29,10 +29,10 @@ class Interactor:
         """
         Used to interact with the SQLite Database
         """
-        self._debug = True
+        self._debug = False
 
-        # create database engine
-        self._connection = self.engine.connect()
+        if self._debug:
+            self.__con.set_trace_callback(print)
 
     # properties
     @property
@@ -50,48 +50,18 @@ class Interactor:
         return self._debug
 
     @property
-    def engine(self) -> db.engine.Engine:
-        if self.__engine is None:
+    def connection(self) -> sqlite3.Connection:
+        if self.__con is None:
             raise RuntimeError("Function called before initializing a instance")
 
-        return self.__engine
-
-    @property
-    def connection(self) -> db.engine.base.Connection:
-        return self._connection
+        return self.__con
 
     # getters
-    @staticmethod
-    def _query_generator(
-            _table: db.Table,
-            query,
-            key: str,
-            value: tp.Any | tp.Iterable[tp.Any],
-            s_types: tuple,
-    ):
-        """
-        :param _table: table to look up
-        :param query: query to extend
-        :param key: name of the key
-        :param value: value to check
-        :param s_types: valid types for value (singular)
-        :return:
-        """
-        if any([isinstance(value, t) for t in s_types]):
-            query = query.where(eval(f"_table.columns.{key}") == value)
-
-        elif isinstance(value, tp.Iterable):
-            query = query.where(eval(f"_table.columns.{key}").in_(value))
-
-        else:
-            raise RuntimeError(f"Argument \"{key}\" must be of type {s_types} or Iterable")
-
-        return query
-
     # noinspection Duplicates
     def get_weather_stations(
             self,
             id: int = ...,
+            n_results: int = 1,
             name: str | tp.Iterable[str] = ...,
             position: str | tp.Iterable[str] = ...,
             height: float | tp.Iterable[float] = ...,
@@ -104,33 +74,54 @@ class Interactor:
 
 
         :param id: filter by id (only one object will be returned
+        :param n_results: how many results should be fetched
         :param name: str or Iterable[str], can yield multiple results
         :param position: str or Iterable[str], can yield multiple results
         :param height: float or Iterable[float], can yield multiple results
         """
-        table = db.Table('stations', META, autoload=True, autoload_with=self.engine)
+        if n_results is None:
+            n_results = -1
 
-        # create query
-        query = db.select([table])
+        cursor = self.__con.cursor()
+
+        # get table info
+        result = cursor.execute("PRAGMA table_info(stations);")
+        t_info = result.fetchall()
+        keys = [column[1] for column in t_info]
 
         # if id is given, there is only one possible result
+        params: list = []
         if id not in (..., None):
-            query = db.select([table]).where(table.columns.id == id)
+            query = f"SELECT * FROM stations WHERE id = ?"
+            params.append(id)
 
         else:
+            query = "SELECT * FROM stations "
             if name not in (..., None):
-                query = self._query_generator(table, query, "name", name, (str,))
+                query += f"{'AND' if '=' in query else 'WHERE'}" \
+                         f" name = ? "
+                params.append(name)
 
             if position not in (..., None):
-                query = self._query_generator(table, query, "position", position, (str,))
+                query += f"{'AND' if '=' in query else 'WHERE'}" \
+                         f" position = ? "
+                params.append(position)
 
             if height not in (..., None):
-                query = self._query_generator(table, query, "height", height, (float, int,))
+                query += f"{'AND' if '=' in query else 'WHERE'}" \
+                         f" height = ? "
+                params.append(height)
+
+        query += ";"
 
         # execute query
-        result = self.connection.execute(query)
-        keys = result.keys()
-        values = result.fetchall()
+        results = cursor.execute(query, params)
+
+        if n_results == -1:
+            values = results.fetchall()
+
+        else:
+            values = results.fetchmany(n_results)
 
         out: list[dict[str, tp.Any]] = []
         for value in values:
@@ -154,43 +145,72 @@ class Interactor:
             air_pressure: float | tp.Iterable[float] = ...,
             n_results: int = ...,
     ) -> list[dict[str, tp.Any]]:
-        table = db.Table('weather', META, autoload=True, autoload_with=self.engine)
+        """
+        get all weather data
 
-        # create query
-        query = db.select([table])
+        :param id: filter by id (only one object will be returned)
+        :param time: filter by time
+        :param station_id: filter by station
+        :param temperature: filter by temperature
+        :param temperature_index: filter y temperature_index
+        :param humidity: filter by humidity
+        :param air_pressure: filter by air_pressure
+        :param n_results: how many results should be fetched
+        :return: list of dictionaries with values
+        """
+        if n_results is None:
+            n_results = 1
+
+        cursor = self.__con.cursor()
+
+        # get table info
+        result = cursor.execute("PRAGMA table_info(weather);")
+        t_info = result.fetchall()
+        keys = [column[1] for column in t_info]
 
         # if id is given, there is only one possible result
+        params: list = []
         if id not in (..., None):
-            query = db.select([table]).where(table.columns.id == id)
+            query = "SELECT * FROM weather WHERE id = ?"
+            params.append(id)
 
         else:
+            query = "SELECT * FROM weather "
+
             if time not in (..., None):
-                query = self._query_generator(table, query, "time", time, (str,))
+                query += f"{'AND' if '=' in query else 'WHERE'}" \
+                         f" time = ? "
+                params.append(time)
 
             if station_id not in (..., None):
-                query = self._query_generator(table, query, "station_id", station_id, (float, int,))
+                query += f"{'AND' if '=' in query else 'WHERE'}" \
+                         f" station_id = ? "
+                params.append(station_id)
 
             if temperature not in (..., None):
-                query = self._query_generator(table, query, "temperature", temperature, (float, int,))
+                query += f"{'AND' if '=' in query else 'WHERE'}" \
+                         f" temperature = ? "
+                params.append(temperature)
 
             if temperature_index not in (..., None):
-                query = self._query_generator(table, query, "temperature_index", temperature_index, (float, int,))
+                query += f"{'AND' if '=' in query else 'WHERE'}" \
+                         f" temperature_index = ? "
+                params.append(temperature_index)
 
             if humidity not in (..., None):
-                query = self._query_generator(table, query, "humidity", humidity, (float, int,))
+                query += f"{'AND' if '=' in query else 'WHERE'}" \
+                         f" humidity = ? "
+                params.append(humidity)
 
             if air_pressure not in (..., None):
-                query = self._query_generator(table, query, "air_pressure", air_pressure, (float, int,))
+                query += f"{'AND' if '=' in query else 'WHERE'}" \
+                         f" air_pressure = ? "
+                params.append(air_pressure)
 
         # execute query
-        # reverse result to get the last n results instead of the first n results
-        result = self.connection.execute(query.order_by(table.columns.id.desc()))
-        keys = result.keys()
+        result = cursor.execute(query, params)
 
-        if n_results in (..., None):
-            values = (result.fetchone(),)
-
-        elif n_results == -1:
+        if n_results == -1:
             values = result.fetchall()
 
         else:
@@ -224,11 +244,11 @@ class Interactor:
         add an entry to a station
         """
         # get stations secret
-        table = db.Table('station_secrets', META, autoload=True, autoload_with=self.engine)
-        query = db.select([table]).where(table.columns.station_id == station_id)
-
-        result = self.connection.execute(query)
-        _secret = result.fetchone()
+        cursor = self.__con.cursor()
+        _secret = cursor.execute(
+            "SELECT secret FROM station_secrets WHERE "
+            "station_id = ?;", (station_id,)
+        ).fetchone()[0]
 
         # no entry
         if not _secret:
@@ -236,7 +256,7 @@ class Interactor:
             return False
 
         # check if secret matches
-        if not _secret[1] == station_secret:
+        if not _secret == station_secret:
             print("secret mismatch")
             return False
 
@@ -259,10 +279,14 @@ class Interactor:
             to_write["air_pressure"] = air_pressure
 
         # create query
-        table = db.Table('weather', META, autoload=True, autoload_with=self.engine)
-        query = db.insert(table).values(**to_write)
+        query = f"INSERT INTO weather" \
+                f" ({', '.join(to_write.keys())}) VALUES" \
+                f" ({', '.join(('?',) * len(to_write))});"
+
+        params = (*to_write.values(),)
 
         # execute query
-        self.connection.execute(query)
+        cursor.execute(query, params)
+        self.__con.commit()
 
         return True
