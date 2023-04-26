@@ -137,8 +137,6 @@ def read_weather_data_simple(
             n_results,
         )
 
-        print("weather data: ", result)
-
         return result
 
 @app.post("/weather/")
