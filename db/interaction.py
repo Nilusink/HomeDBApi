@@ -254,6 +254,9 @@ class Interactor:
             "station_id = ?;", (station_id,)
         ).fetchone()[0]
 
+        id = int(cursor.execute("SELECT MAX(id) FROM weather;").fetchone()[0])
+        id += 1
+
         # no entry
         if not _secret:
             print("station secret entry not found")
@@ -266,6 +269,7 @@ class Interactor:
 
         # create query
         to_write: dict = {
+            "id": id,
             "time": time.strftime("%Y.%m.%d-%T"),
             "station_id": station_id,
         }
