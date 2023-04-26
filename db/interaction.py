@@ -16,19 +16,21 @@ class Interactor:
     __con: sqlite3.Connection = None
     _path: str = "../data/main.db"
 
-    def __new__(cls, *args, **kwargs):
-        new = super().__new__(cls)
-
-        # only create one instance of ENGINE for all instances
-        if cls.__con is None:
-            cls.__con = sqlite3.connect(cls._path)
-
-        return new
+    # def __new__(cls, *args, **kwargs):
+    #     new = super().__new__(cls)
+    #
+    #     # only create one instance of ENGINE for all instances
+    #     if cls.__con is None:
+    #         cls.__con = sqlite3.connect(cls._path)
+    #
+    #     return new
 
     def __init__(self):
         """
         Used to interact with the SQLite Database
         """
+        self.__con = sqlite3.connect(self._path)
+
         self._debug = False
 
         if self._debug:
