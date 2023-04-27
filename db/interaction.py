@@ -7,6 +7,7 @@ Easy Access to the database
 Author:
 Nilusink
 """
+from random import randint
 import typing as tp
 import sqlite3
 import time
@@ -293,8 +294,16 @@ class Interactor:
 
         params = (*to_write.values(),)
 
-        # execute query
-        cursor.execute(query, params)
-        self.__con.commit()
+        for _ in range(20):
+            # execute query
+            try:
+                cursor.execute(query, params)
 
-        return True
+            except sqlite3.OperationalError:
+                time.sleep(randint(1, 50) / 10)
+                continue
+
+            self.__con.commit()
+            return True
+
+        return False
