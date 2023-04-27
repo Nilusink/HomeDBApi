@@ -29,7 +29,7 @@ class Interactor:
         """
         Used to interact with the SQLite Database
         """
-        self.__con = sqlite3.connect(self._path, timeout=10)
+        self.__con = sqlite3.connect(self._path, timeout=20)
 
         self._debug = False
 
