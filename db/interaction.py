@@ -300,7 +300,11 @@ class Interactor:
                 cursor.execute(query, params)
 
             except sqlite3.OperationalError:
-                time.sleep(randint(1, 50) / 10)
+                to = randint(1, 50) / 10
+                if self.debug:
+                    print(f"db Locked, timeout: {to}s")
+
+                time.sleep(to)
                 continue
 
             self.__con.commit()
