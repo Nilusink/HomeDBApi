@@ -7,11 +7,16 @@ Enables the Database to be reachable from outside
 Author:
 Nilusink
 """
-from db import *
+
 import typing as tp
+
 from fastapi import FastAPI
-from pydantic import BaseModel
 from fastapi.middleware.cors import CORSMiddleware
+from pydantic import BaseModel
+
+from icecream import ic
+
+from db import *
 from extra import *
 
 
@@ -30,7 +35,7 @@ class WeatherStationResult(BaseModel):
     id: int
     name: str
     position: str
-    height: str | None
+    height: float | None
 
 
 class WeatherStationRequest(BaseModel):
@@ -94,17 +99,19 @@ def read_weather_stations(item: WeatherStationRequest) -> list[WeatherStationRes
 
 @app.get("/simple/stations/")
 def read_weather_stations_simple(
-        id: int = None,
-        name: str = None,
-        position: str = None,
-        height: float = None,
+    id: int = None,
+    name: str = None,
+    position: str = None,
+    height: float = None,
 ) -> list[WeatherStationResult]:
     """
     Get available Stations. URI-only version because JavaScript cant add a body to a GET request.
     """
+    ic("read wss")
     with catch_error():
         i = Interactor()
         result = i.get_weather_stations(id, name, position, height)
+        ic(result)
 
         return result
 
@@ -123,14 +130,14 @@ def read_weather_data(item: WeatherDataRequest) -> list[WeatherDataResult]:
 
 @app.get("/simple/weather/")
 def read_weather_data_simple(
-        id: int = None,
-        time: str = None,
-        station_id: int = None,
-        temperature: float = None,
-        temperature_index: float = None,
-        humidity: float = None,
-        air_pressure: float = None,
-        n_results: int = None,
+    id: int = None,
+    time: str = None,
+    station_id: int = None,
+    temperature: float = None,
+    temperature_index: float = None,
+    humidity: float = None,
+    air_pressure: float = None,
+    n_results: int = None,
 ) -> list[WeatherDataResult]:
     """
     Browse available weather data. URI-only version because JavaScript cant add a body to a GET request.
@@ -149,6 +156,7 @@ def read_weather_data_simple(
         )
 
         return result
+
 
 @app.post("/weather/")
 def write_weather_data(item: WeatherPush):
