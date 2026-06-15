@@ -7,10 +7,16 @@ Easy Access to the database
 Author:
 Nilusink
 """
-from random import randint
-import typing as tp
+
 import sqlite3
 import time
+import typing as tp
+from random import randint
+from types import EllipsisType
+
+int_param_t = int | tp.Iterable[int] | EllipsisType | None
+float_param_t = float | tp.Iterable[float] | EllipsisType | None
+string_param_t = str | tp.Iterable[str] | EllipsisType | None
 
 
 class Interactor:
@@ -62,12 +68,12 @@ class Interactor:
     # getters
     # noinspection Duplicates
     def get_weather_stations(
-            self,
-            id: int = ...,
-            n_results: int = 1,
-            name: str | tp.Iterable[str] = ...,
-            position: str | tp.Iterable[str] = ...,
-            height: float | tp.Iterable[float] = ...,
+        self,
+        id: int | EllipsisType | None = ...,
+        n_results: int = 1,
+        name: string_param_t = ...,
+        position: string_param_t = ...,
+        height: float_param_t = ...,
     ) -> list[dict[str, tp.Any]]:
         """
         get weather stations.
@@ -101,18 +107,15 @@ class Interactor:
         else:
             query = "SELECT * FROM stations "
             if name not in (..., None):
-                query += f"{'AND' if '=' in query else 'WHERE'}" \
-                         f" name = ? "
+                query += f"{'AND' if '=' in query else 'WHERE'} name = ? "
                 params.append(name)
 
             if position not in (..., None):
-                query += f"{'AND' if '=' in query else 'WHERE'}" \
-                         f" position = ? "
+                query += f"{'AND' if '=' in query else 'WHERE'} position = ? "
                 params.append(position)
 
             if height not in (..., None):
-                query += f"{'AND' if '=' in query else 'WHERE'}" \
-                         f" height = ? "
+                query += f"{'AND' if '=' in query else 'WHERE'} height = ? "
                 params.append(height)
 
         query += " ORDER BY id DESC;"
@@ -138,15 +141,16 @@ class Interactor:
 
     # noinspection Duplicates
     def get_weather_data(
-            self,
-            id: int = ...,
-            time: str | tp.Iterable[str] = ...,
-            station_id: int | tp.Iterable[int] = ...,
-            temperature: float | tp.Iterable[float] = ...,
-            temperature_index: float | tp.Iterable[float] = ...,
-            humidity: float | tp.Iterable[float] = ...,
-            air_pressure: float | tp.Iterable[float] = ...,
-            n_results: int = ...,
+        self,
+        id: int | EllipsisType | None = ...,
+        time: string_param_t = ...,
+        station_id: int_param_t = ...,
+        temperature: float_param_t = ...,
+        temperature_index: float_param_t = ...,
+        soil_temperature_20cm: float_param_t = ...,
+        humidity: float_param_t = ...,
+        air_pressure: float_param_t = ...,
+        n_results: int | EllipsisType | None = ...,
     ) -> list[dict[str, tp.Any]]:
         """
         get all weather data
@@ -156,13 +160,17 @@ class Interactor:
         :param station_id: filter by station
         :param temperature: filter by temperature
         :param temperature_index: filter y temperature_index
+        :param soil_temperature_20cm: soil temperature at 20cm depth
         :param humidity: filter by humidity
         :param air_pressure: filter by air_pressure
         :param n_results: how many results should be fetched
         :return: list of dictionaries with values
         """
-        if n_results is None:
-            n_results = 1
+        if n_results is None or isinstance(n_results, EllipsisType):
+            n_results_: int = 1
+
+        else:
+            n_results_: int = n_results
 
         cursor = self.__con.cursor()
 
@@ -181,33 +189,33 @@ class Interactor:
             query = "SELECT * FROM weather "
 
             if time not in (..., None):
-                query += f"{'AND' if '=' in query else 'WHERE'}" \
-                         f" time = ? "
+                query += f"{'AND' if '=' in query else 'WHERE'} time = ? "
                 params.append(time)
 
             if station_id not in (..., None):
-                query += f"{'AND' if '=' in query else 'WHERE'}" \
-                         f" station_id = ? "
+                query += f"{'AND' if '=' in query else 'WHERE'} station_id = ? "
                 params.append(station_id)
 
             if temperature not in (..., None):
-                query += f"{'AND' if '=' in query else 'WHERE'}" \
-                         f" temperature = ? "
+                query += f"{'AND' if '=' in query else 'WHERE'} temperature = ? "
                 params.append(temperature)
 
             if temperature_index not in (..., None):
-                query += f"{'AND' if '=' in query else 'WHERE'}" \
-                         f" temperature_index = ? "
+                query += f"{'AND' if '=' in query else 'WHERE'} temperature_index = ? "
                 params.append(temperature_index)
 
+            if soil_temperature_20cm not in (..., None):
+                query += (
+                    f"{'AND' if '=' in query else 'WHERE'} soil_temperature_20cm = ? "
+                )
+                params.append(soil_temperature_20cm)
+
             if humidity not in (..., None):
-                query += f"{'AND' if '=' in query else 'WHERE'}" \
-                         f" humidity = ? "
+                query += f"{'AND' if '=' in query else 'WHERE'} humidity = ? "
                 params.append(humidity)
 
             if air_pressure not in (..., None):
-                query += f"{'AND' if '=' in query else 'WHERE'}" \
-                         f" air_pressure = ? "
+                query += f"{'AND' if '=' in query else 'WHERE'} air_pressure = ? "
                 params.append(air_pressure)
 
         query += " ORDER BY id DESC;"
@@ -215,11 +223,11 @@ class Interactor:
         # execute query
         result = cursor.execute(query, params)
 
-        if n_results == -1:
+        if n_results_ == -1:
             values = result.fetchall()
 
         else:
-            values = result.fetchmany(n_results)
+            values = result.fetchmany(n_results_)
 
         out: list[dict[str, tp.Any]] = []
 
@@ -237,13 +245,14 @@ class Interactor:
         return out
 
     def set_weather_data(
-            self,
-            station_id: int,
-            station_secret: str,
-            temperature: float | tp.Iterable[float] = ...,
-            temperature_index: float | tp.Iterable[float] = ...,
-            humidity: float | tp.Iterable[float] = ...,
-            air_pressure: float | tp.Iterable[float] = ...,
+        self,
+        station_id: int,
+        station_secret: str,
+        temperature: float_param_t = ...,
+        temperature_index: float_param_t = ...,
+        soil_temperature_20cm: float_param_t = ...,
+        humidity: float_param_t = ...,
+        air_pressure: float_param_t = ...,
     ) -> bool:
         """
         add an entry to a station
@@ -251,8 +260,7 @@ class Interactor:
         # get stations secret
         cursor = self.__con.cursor()
         _secret = cursor.execute(
-            "SELECT secret FROM station_secrets WHERE "
-            "station_id = ?;", (station_id,)
+            "SELECT secret FROM station_secrets WHERE station_id = ?;", (station_id,)
         ).fetchone()[0]
 
         id = int(cursor.execute("SELECT MAX(id) FROM weather;").fetchone()[0])
@@ -287,10 +295,15 @@ class Interactor:
         if air_pressure not in (..., None):
             to_write["air_pressure"] = air_pressure
 
+        if soil_temperature_20cm not in (..., None):
+            to_write["soil_temperature_20cm"] = soil_temperature_20cm
+
         # create query
-        query = f"INSERT INTO weather" \
-                f" ({', '.join(to_write.keys())}) VALUES" \
-                f" ({', '.join(('?',) * len(to_write))});"
+        query = (
+            f"INSERT INTO weather"
+            f" ({', '.join(to_write.keys())}) VALUES"
+            f" ({', '.join(('?',) * len(to_write))});"
+        )
 
         params = (*to_write.values(),)
 

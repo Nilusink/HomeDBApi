@@ -27,6 +27,7 @@ class WeatherDataResult(BaseModel):
     station_id: int
     temperature: float | None
     temperature_index: float | None
+    soil_temperature_20cm: float | tp.Iterable[float] = None
     humidity: float | None
     air_pressure: float | None
 
@@ -51,6 +52,7 @@ class WeatherDataRequest(BaseModel):
     station_id: int | tp.Iterable[int] = None
     temperature: float | tp.Iterable[float] = None
     temperature_index: float | tp.Iterable[float] = None
+    soil_temperature_20cm: float | tp.Iterable[float] = None
     humidity: float | tp.Iterable[float] = None
     air_pressure: float | tp.Iterable[float] = None
     n_results: int = None
@@ -62,6 +64,7 @@ class WeatherPush(BaseModel):
     station_secret: str
     temperature: float | None = None
     temperature_index: float | None = None
+    soil_temperature_20cm: float | tp.Iterable[float] = None
     humidity: float | None = None
     air_pressure: float | None = None
 
@@ -135,6 +138,7 @@ def read_weather_data_simple(
     station_id: int = None,
     temperature: float = None,
     temperature_index: float = None,
+    soil_temperature_20cm: float = None,
     humidity: float = None,
     air_pressure: float = None,
     n_results: int = None,
@@ -147,12 +151,13 @@ def read_weather_data_simple(
         result = i.get_weather_data(
             id,
             time,
-            station_id,
-            temperature,
-            temperature_index,
-            humidity,
-            air_pressure,
-            n_results,
+            station_id=station_id,
+            temperature=temperature,
+            temperature_index=temperature_index,
+            soil_temperature_20cm=soil_temperature_20cm,
+            humidity=humidity,
+            air_pressure=air_pressure,
+            n_results=n_results,
         )
 
         return result
