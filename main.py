@@ -27,7 +27,7 @@ class WeatherDataResult(BaseModel):
     station_id: int
     temperature: float | None
     temperature_index: float | None
-    soil_temperature_20cm: float | tp.Iterable[float] = None
+    soil_temperature_20cm: float | None
     humidity: float | None
     air_pressure: float | None
 
@@ -64,7 +64,7 @@ class WeatherPush(BaseModel):
     station_secret: str
     temperature: float | None = None
     temperature_index: float | None = None
-    soil_temperature_20cm: float | tp.Iterable[float] = None
+    soil_temperature_20cm: float | None = None
     humidity: float | None = None
     air_pressure: float | None = None
 
