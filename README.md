@@ -11,4 +11,4 @@ other different topics will be added.
 
 # Documentation
 Since the API was made with FastAPI, the documentation is auto-generated. It can be found here:
-[Docs](http://home.nilus.ink/redoc/)
+[Docs](http://85.215.56.127:43210/redoc/)
